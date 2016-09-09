@@ -19,7 +19,7 @@ int ppm_read(char *output_type, char *input_file, char *output_file){
     FILE *fh = fopen(input_file, "r");
     FILE *fp = fopen(output_file, "w");
 
-    int max_color;
+    int max_color, width, height;
     int c;
     PPMimage *image;
 
@@ -74,6 +74,8 @@ int ppm_read(char *output_type, char *input_file, char *output_file){
     //Get image dimensions
     //Add Error checking later
     fscanf(fh, "%d %d", &image->width, &image->height);
+    width = image->width;
+    height = image->height;
     //printf("%d %d", image->width, image->height);
 
     //Scan next element, which is image max color, compare with 255, max image color for project
@@ -83,14 +85,20 @@ int ppm_read(char *output_type, char *input_file, char *output_file){
     }
 
     //Code to put picture data into image buffer
-
-
+    image->buffer = (PPMpixel*)malloc(sizeof(PPMpixel) * width * height);
+    //This code writes to the buffer of image to transfer to output file
+    fread(image->buffer, 3*width, height, fh);
+    //This code writes to output image, but only the pixels
+    fwrite(image->buffer, 3*width, height, fp);
 
 
 
     fclose(fp);
     fclose(fh);
     return 0;
+}
+
+int ppm_write(){
 }
 
 int main(int argc, char *argv[]){
@@ -100,6 +108,7 @@ int main(int argc, char *argv[]){
 
     //Grab variable that is output type
     char *output_type = argv[1];
+    //Put Error checker to make sure output_type is 3 or 6.
 
     //Grab input file to convert
     char *input_file = argv[2];
