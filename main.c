@@ -7,43 +7,31 @@ typedef struct PPMpixel{
     } PPMpixel;
 
 typedef struct PPMimage {
-    int width, height;
+    int width, height, input_filetype;
     PPMpixel *buffer;
     } PPMimage;
 
 PPMimage *image;
-
 //Function to convert ASCII to Binary Bits and Binary Bits to ASCII
-int ppm_convert(int output_type){
-return 0;
-}
+int ppm_convert(int output_type, int input_filetype);
 
-//Does not work for P6 yet, put catcher so you open a Binary file if given P6 File
-int ppm_read(int output_type, char *input_file){
+//Read input_file and put file type, image dimensions, and pixel data into image struct.
+int ppm_read(char *input_file){
     FILE *fh;
     int max_color, width, height;
     int c;
-    //If output_type is 6 creat a wb file
-    //If input file is P6 open a rb file
-    if(output_type == 3){
-        fh = fopen(input_file, "r");
-        //printf("Opening P3");
 
+    //Try to open as a P3 File, if unable try to open as a P6 file
+    fh = fopen(input_file, "r");
+    if(fh == 0){
+       fh = fopen(input_file, "rb");
     }
-    if(output_type == 6){
-        fh = fopen(input_file, "rb");
-        //printf("Opening P6");
-    }
-
-
-
     //If fh == 0 then file did not open, error out
     if(fh == 0){
+        fclose(fh);
         fprintf(stderr, "Error: Unable to open file '%s' \n", input_file);
         return 1;
     }
-
-
     //Check the first character of the opened file to make sure it is a PPM file, otherwise error out
     c = fgetc(fh);
     if (c!= 'P'){
@@ -51,7 +39,7 @@ int ppm_read(int output_type, char *input_file){
         return 1;
     }
     ungetc(c, fh);
-
+    //fprintf("%d", image->input_filetype);
 
     //Allocate memory for image
     image = (PPMimage *)malloc(sizeof(PPMimage));
@@ -59,6 +47,13 @@ int ppm_read(int output_type, char *input_file){
         fprintf(stderr, "Unable to allocate memory \n");
         return 1;
     }
+
+    //Put original Input File type # into struct for convert reference
+    c = fgetc(fh);
+    c = fgetc(fh);
+    image->input_filetype = c;
+    ungetc(c, fh);
+    //printf("%c", image->input_filetype);
 
     //Skip over magic Number
     c = fgetc(fh);
@@ -86,14 +81,17 @@ int ppm_read(int output_type, char *input_file){
     height = image->height;
     //printf("%d %d", image->width, image->height);
 
-    //Scan next element, which is image max color, compare with 255, max image color for project
+    //Scan next element, which is image max color, compare with 255, max image color for 8-bit pictures
     fscanf(fh, "%d", &max_color);
     if(max_color != 255){
         fprintf(stderr, "'%s' is not formatted into 8-bit color, ie max colors of 255", input_file);
     }
 
-    //Code to put picture data into image buffer
+    //Code allocate room for pixel data
     image->buffer = (PPMpixel*)malloc(sizeof(PPMpixel) * width * height);
+    if(image->buffer == 0){
+        fprintf(stderr, "Error: Memory could not be allocated.");
+    }
     //This code writes to the buffer of image to transfer to output file
     fread(image->buffer, 3*width, height, fh);
     fclose(fh);
@@ -141,11 +139,43 @@ int ppm_write(int output_type, char *output_file){
     fprintf(fp,"\n255");
 
     //Call Function Here to convert image->buffer to either ASCII or Raw Bits
-
+    ppm_convert(magic_number[1], image->input_filetype);
     //This code writes to output image, but only the pixels
     fwrite(image->buffer, 3*width, height, fp);
     fclose(fp);
     return 0;
+}
+
+int ppm_convert(int output_type, int input_filetype){
+    int i, width, height;
+    width = image->width;
+    height = image->height;
+    //Increment through the buffer and change each RGB
+    //printf("We have a P%c file converting to a P%c", image->input_filetype, output_type);
+    if(input_filetype == '3' && output_type == '6'){
+        //Code to go from ASCII to Raw Bits
+        printf("\nInput type 3 and output type 6");
+        for(i=0; i< width*height; i++){
+
+        }
+        return 0;
+
+    }
+    else if(input_filetype == '6' && output_type == '3'){
+        printf("\nInput type 6 and output type 3");
+        //Code to go from Raw Bits to ASCII
+        for(i=0; i< width*height; i++){
+
+        }
+        return 0;
+    }
+    else{
+        //Converting P3 to P3 or P6 to P6
+        printf("\n P3 to P3 or P6 to P6");
+        return 0;
+    }
+
+return 0;
 }
 
 int main(int argc, char *argv[]){
@@ -165,7 +195,7 @@ int main(int argc, char *argv[]){
     //Grab name of output file to create
     char *output_file = argv[3];
 
-    ppm_read(type, input_file);
+    ppm_read(input_file);
     ppm_write(type, output_file);
     return 0;
 }
