@@ -26,8 +26,6 @@ int ppm_read(char *input_file){
     int max_color, width, height;
     int c, i,j;
     char temp_buffer[4];
-    int temp_int_buffer[4];
-    memset(temp_buffer, '\0', sizeof(temp_int_buffer));
     memset(temp_buffer, '\0', sizeof(temp_buffer));
 
     //Try to open as a P3 File, if unable try to open as a P6 file
@@ -101,11 +99,13 @@ int ppm_read(char *input_file){
 
     //Code allocate room for pixel data
     image->buffer = (PPMpixel*)malloc((MAX_COLORS+1)*width*height);
+    //memset(image->buffer, '\0', sizeof(image->buffer));
     //printf("%d", sizeof(image->buffer));
     if(image->buffer == 0){
         fprintf(stderr, "Error: Memory could not be allocated.");
     }
-
+    fgetc(fh);
+    //return 0;
     int k;
     int tracker = 0;
     j=0;
@@ -126,17 +126,17 @@ int ppm_read(char *input_file){
                 if(tracker == 1){
                     image->buffer[j].r = k;
                     //printf("k is %d\n", k);
-                    //printf("r is %d\n", image->buffer[j].r);
+                    //printf("r is %d\n", k);
                 }
                 if(tracker == 2){
                     image->buffer[j].g = k;
                     //printf("k is %d\n", k);
-                    //printf("g is %d\n", image->buffer[j].g);
+                    //printf("g is %d\n", k);
                 }
                 if(tracker == 3){
                     image->buffer[j].b = k;
                     //printf("k is %d\n", k);
-                    //printf("b is %d\n", image->buffer[j].b);
+                    //printf("b is %d\n", k);
                     tracker = 0;
                 }
                 j++;
@@ -149,13 +149,19 @@ int ppm_read(char *input_file){
                 temp_buffer[i++] = c;
             }
         }
-
     ungetc(c, fh);
-
     }
     //If a P6 file, read the entire thing into buffer, need to fix
     if(image->input_filetype == '6'){
-        fread(image->buffer, (MAX_COLORS+1), width*height, fh);
+        //fread(image->buffer, (MAX_COLORS+1), width*height, fh);
+            //c = fgetc(fh);
+           //printf("%d", (int)(c=fgetc(fh)));
+           //printf("%c", (char)'\n');
+           //printf("\n%c", (char)10);
+        size_t size = height*width;
+        size_t read_size = fread(image->buffer, sizeof(image->buffer), size, fh);
+        //fprintf("%d", read_size);
+        //printf("%d", image->buffer[0].r);
     }
 
     //fread(image->buffer, (MAX_COLORS+1), width*height, fh);
@@ -210,7 +216,6 @@ int ppm_write(int output_type, char *output_file){
     //fwrite(image->buffer, (MAX_COLORS+1), width*height, fp);
 
     //Converting a P3 to P6
-    //Working but extra 0 binary equivalent added to beginning as well
     if(magic_number[1] == '6' && image->input_filetype == '3'){
             fprintf(fp,"\n");
             for (j=0; j< sizeof(PPMpixel)*width*height; j++){
@@ -232,38 +237,20 @@ int ppm_write(int output_type, char *output_file){
             //fwrite(image->buffer, sizeof(image->buffer), sizeof(PPMpixel)*height*width, fp);
     }
     //Converting a P6 to P3
+    //Working but bunch of extra zeros added to end
     if(magic_number[1] == '3' && image->input_filetype == '6'){
             fprintf(fp,"\n");
                 for (j=0; j< sizeof(PPMpixel)*width*height; j++){
-                    //fprintf(fp, "%d", image->buffer[j].space);
-                    //fprintf(fp, "\n");
-                    tracker++;
-                    if(tracker == 1){
-                       fprintf(fp, "%c", image->buffer[j].r);
+                        fprintf(fp, "%d", image->buffer[j].r);
                         fprintf(fp, "\n");
-                    }
-                    if(tracker == 2){
-                       fprintf(fp, "%c", image->buffer[j].g);
+                        fprintf(fp, "%d", image->buffer[j].g);
                         fprintf(fp, "\n");
-                    }
-                    if(tracker == 3){
-                       fprintf(fp, "%c", image->buffer[j].b);
+                        fprintf(fp, "%d", image->buffer[j].b);
                         fprintf(fp, "\n");
-                        tracker = 0;
-                    }
-                    /*
-                    fprintf(fp, "\n");
-                    fprintf(fp, "%d", image->buffer[j].r);
-                    fprintf(fp, "\n");
-                    fprintf(fp, "%d", image->buffer[j].g);
-                    fprintf(fp, "\n");
-                    fprintf(fp, "%d", image->buffer[j].b);
-                    fprintf(fp, "\n");*/
                 }
-            //fprintf(fp, "\n");
     }
+
     //Working P3 to P3
-    //Random zero added to beginning, try to fix
     if(magic_number[1] == '3' && image->input_filetype == '3'){
             fprintf(fp,"\n");
                 for (j=0; j< sizeof(PPMpixel)*width*height; j++){
@@ -283,31 +270,19 @@ int ppm_write(int output_type, char *output_file){
                     }
                 }
     }
+    //Almost Working P6 to P6
     if(magic_number[1] == '6' && image->input_filetype == '6'){
             fprintf(fp,"\n");
             for (j=0; j< sizeof(PPMpixel)*width*height; j++){
-                    tracker++;
-                    if(tracker == 1){
-                       fwrite(&image->buffer[j].r,1,1, fp);
+                    fwrite(&image->buffer[j].r,1,1, fp);
                         //fprintf(fp, "\n");
-                    }
-                    if(tracker == 2){
-                       fwrite(&image->buffer[j].g,1,1, fp);
+                    fwrite(&image->buffer[j].g,1,1, fp);
                         //fprintf(fp, "\n");
-                    }
-                    if(tracker == 3){
-                      fwrite(&image->buffer[j].b,1,1, fp);
+                    fwrite(&image->buffer[j].b,1,1, fp);
                         //fprintf(fp, "\n");
-                        tracker = 0;
-                    }
             }
             //fwrite(image->buffer, sizeof(image->buffer), sizeof(PPMpixel)*height*width, fp);
     }
-/*
-    if(magic_number[1] == image->input_filetype){
-        fwrite(image->buffer, sizeof(PPMpixel), width*height, fp);
-    }
-*/
     fclose(fp);
     return 0;
 }
