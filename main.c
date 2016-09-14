@@ -18,6 +18,10 @@ PPMimage *image;
 #define MAX_COLORS 255
 //Function to convert ASCII to Binary Bits and Binary Bits to ASCII
 int ppm_convert(int output_type, int input_filetype);
+//Function to reset my temp buffer that I use to put ascii characters into image buffer
+void *memset(void *str, int c, size_t n);
+//Function I use to help grab all ascii characters but not spaces
+int isspace(int c);
 
 //Read input_file and put file type, image dimensions, and pixel data into image struct.
 int ppm_read(char *input_file){
@@ -83,10 +87,10 @@ int ppm_read(char *input_file){
         fprintf(stderr, "'%s' is not formatted into 8-bit color, ie max colors of %d", input_file, MAX_COLORS);
         return 1;
     }
+    //printf("%d", sizeof(PPMpixel));
     //Code allocate room for pixel data
     image->buffer = (PPMpixel*)malloc((MAX_COLORS+1)*width*height);
     //printf("The size of PPMpixel is: %d", sizeof(image->buffer));
-    //memset(image->buffer, '\0', sizeof(image->buffer));
     //printf("%d", sizeof(image->buffer));
     if(image->buffer == 0){
         fprintf(stderr, "Error: Memory could not be allocated.");
