@@ -49,22 +49,19 @@ int ppm_read(char *input_file){
         return 1;
     }
     ungetc(c, fh);
-
     //Allocate memory for image
     image = (PPMimage*)malloc(sizeof(PPMimage));
     if(image == 0){
         fprintf(stderr, "Unable to allocate memory \n");
         return 1;
     }
+    c = fgetc(fh);
+    c = fgetc(fh);
     //Put original Input File type # into struct for convert reference
-    c = fgetc(fh);
-    c = fgetc(fh);
     image->input_filetype = c;
-
     //Skip over magic Number
     while((c = fgetc(fh)) != '\n'){
     }
-
     //Skip over the Comments
     c = fgetc(fh);
     while (c=='#'){
@@ -72,7 +69,6 @@ int ppm_read(char *input_file){
             c=fgetc(fh);
     }
     ungetc(c, fh);
-
     //Get image dimensions
     if(fscanf(fh, "%d %d", &image->width, &image->height) !=2){
         fprintf(stderr, "A width or Height image dimensions is missing in the file.");
@@ -80,80 +76,62 @@ int ppm_read(char *input_file){
     }
     width = image->width;
     height = image->height;
-
     //Scan next element, which is image max color, compare with 255, max image color for 8-bit pictures
     fscanf(fh, "%d", &max_color);
     if(max_color != MAX_COLORS){
         fprintf(stderr, "'%s' is not formatted into 8-bit color, ie max colors of %d", input_file, MAX_COLORS);
         return 1;
     }
-    //printf("%d", sizeof(PPMpixel));
     //Code allocate room for pixel data
     image->buffer = (PPMpixel*)malloc((MAX_COLORS+1)*width*height);
-    //printf("The size of PPMpixel is: %d", sizeof(image->buffer));
-    //printf("%d", sizeof(image->buffer));
     if(image->buffer == 0){
         fprintf(stderr, "Error: Memory could not be allocated.");
         return 1;
     }
+    //Remove unnecessary character still in file
     fgetc(fh);
-
-    //printf("Addding to buffer");
     if(image->input_filetype == '3'){
         j=0;
         i=0;
         while ((c = fgetc(fh)) != EOF){
-        //printf("Start of Loop %c\n", c);
+            //If character I grab is a space, then I have a full rgb component, add to buffer
             if(isspace(c)){
-                //printf("Space Caught\n");
-                //printf("%c", temp_buffer[0]);
-                //printf("%c", temp_buffer[1]);
-                //printf("%c", temp_buffer[2]);
-                //printf("%c\n", temp_buffer[3]);
                 k = atoi(temp_buffer);
-                //printf("%d\n", k);
                 tracker++;
                 if(tracker == 1){
                     image->buffer[j].r = k;
-                    //printf("k is %d\n", k);
-                    //printf("r is %d\n", k);
                 }
                 if(tracker == 2){
                     image->buffer[j].g = k;
-                    //printf("k is %d\n", k);
-                    //printf("g is %d\n", k);
                 }
                 if(tracker == 3){
                     image->buffer[j].b = k;
-                    //printf("k is %d\n", k);
-                    //printf("b is %d\n", k);
+
                     tracker = 0;
                 }
                 j++;
                 i = 0;
-                //printf("%d\n", tracker);
+                //Empty out temp buffer since some numbers may only be 1 digit or 2 digit instead of max 3
                 memset(temp_buffer, '\0', sizeof(temp_buffer));
             }
             else{
-                //printf("Adding to buffer %c\n", c);
+                //Put part of full number into temp_buffer until I grab entire number
                 temp_buffer[i++] = c;
             }
         }
     ungetc(c, fh);
     }
-    //If a P6 file, read the entire thing into buffer, need to fix
+    //If a P6 file, read the entire thing into buffer, need to fix minor bug if possible
     if(image->input_filetype == '6'){
         fread(image->buffer, (sizeof(&image->buffer)), height*width, fh);
 
     }
-
-    //fread(image->buffer, (MAX_COLORS+1), width*height, fh);
-    //printf("The size of PPMpixel is: %d", sizeof(PPMpixel));
     fclose(fh);
     return 0;
 
 }
 
+//Take image buffer and put it into corresponding output file
 int ppm_write(int output_type, char *output_file){
     FILE *fp;
     int width, height;
@@ -169,15 +147,12 @@ int ppm_write(int output_type, char *output_file){
     }else{
         magic_number[1] = '6';
     }
-    //Open binary file to write to if 6 is given
+    //Open correct type of file to write to
     if(output_type == 3){
         fp = fopen(output_file, "w");
-        //printf("Opening P3 to write to. \n");
-
     }
     if(output_type == 6){
         fp = fopen(output_file, "wb");
-        //printf("Opening P6 to write to. \n");
     }
 
     //If fp == 0 then file did not create, error out
@@ -214,7 +189,6 @@ int ppm_write(int output_type, char *output_file){
     //Working but bunch of extra zeros added to end
     if(magic_number[1] == '3' && image->input_filetype == '6'){
             fprintf(fp,"\n");
-            //printf("Size of PPMpixel is: %d", sizeof(PPMpixel)*width*height);
                 for (j=0; j< sizeof(PPMpixel)*width*height; j++){
                         fprintf(fp, "%d", image->buffer[j].r);
                         fprintf(fp, "\n");
@@ -245,7 +219,7 @@ int ppm_write(int output_type, char *output_file){
                     }
                 }
     }
-    //Working P6 to P6, extra 0's added to end of file
+    //Working P6 to P6, but extra 0's
     if(magic_number[1] == '6' && image->input_filetype == '6'){
             fprintf(fp,"\n");
             for (j=0; j< sizeof(PPMpixel)*width*height; j++){
@@ -266,7 +240,7 @@ int main(int argc, char *argv[]){
     //Grab variable that is output type
     char *output_type = argv[1];
     int type = atoi(output_type);
-    //printf("%d", type);
+
     //Put Error checker to make sure output_type is 3 or 6.
     if(type != 6 && type != 3){
         fprintf(stderr, "Image output type given is not valid, must be 3 or 6.\n");
