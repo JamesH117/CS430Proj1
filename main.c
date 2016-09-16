@@ -40,20 +40,20 @@ int ppm_read(char *input_file){
     if(fh == 0){
         fclose(fh);
         fprintf(stderr, "Error: Unable to open file '%s' \n", input_file);
-        return 1;
+        exit(1);
     }
     //Check the first character of the opened file to make sure it is a PPM file, otherwise error out
     c = fgetc(fh);
     if (c!= 'P'){
         fprintf(stderr, "Error: This is not a PPM file. \n");
-        return 1;
+        exit(1);
     }
     ungetc(c, fh);
     //Allocate memory for image
     image = (PPMimage*)malloc(sizeof(PPMimage));
     if(image == 0){
         fprintf(stderr, "Unable to allocate memory \n");
-        return 1;
+        exit(1);
     }
     c = fgetc(fh);
     c = fgetc(fh);
@@ -72,7 +72,7 @@ int ppm_read(char *input_file){
     //Get image dimensions
     if(fscanf(fh, "%d %d", &image->width, &image->height) !=2){
         fprintf(stderr, "A width or Height image dimensions is missing in the file.");
-        return 1;
+        exit(1);
     }
     width = image->width;
     height = image->height;
@@ -80,13 +80,13 @@ int ppm_read(char *input_file){
     fscanf(fh, "%d", &max_color);
     if(max_color != MAX_COLORS){
         fprintf(stderr, "'%s' is not formatted into 8-bit color, ie max colors of %d", input_file, MAX_COLORS);
-        return 1;
+        exit(1);
     }
     //Code allocate room for pixel data
     image->buffer = (PPMpixel*)malloc((MAX_COLORS+1)*width*height);
     if(image->buffer == 0){
         fprintf(stderr, "Error: Memory could not be allocated.");
-        return 1;
+        exit(1);
     }
     //Remove unnecessary character still in file
     fgetc(fh);
@@ -96,7 +96,19 @@ int ppm_read(char *input_file){
         while ((c = fgetc(fh)) != EOF){
             //If character I grab is a space, then I have a full rgb component, add to buffer
             if(isspace(c)){
+
+                //Get rid of extra spaces in case there is more than one space between each pixel data
+                while(isspace(c = fgetc(fh))){
+                }
+                ungetc(c, fh);
+                //Convert Pixel data to an int
                 k = atoi(temp_buffer);
+                //Check if pixel data is too large
+                if(k > MAX_COLORS){
+                    fprintf(stderr, "Some pixel data is larger than Max color size allowed.");
+                    exit(1);
+                }
+                //Put pixel data into corresponding RGB
                 tracker++;
                 if(tracker == 1){
                     image->buffer[j].r = k;
@@ -124,7 +136,6 @@ int ppm_read(char *input_file){
     //If a P6 file, read the entire thing into buffer, need to fix minor bug if possible
     if(image->input_filetype == '6'){
         fread(image->buffer, (sizeof(&image->buffer)), height*width, fh);
-
     }
     fclose(fh);
     return 0;
@@ -158,7 +169,7 @@ int ppm_write(int output_type, char *output_file){
     //If fp == 0 then file did not create, error out
     if(fp == 0){
         fprintf(stderr, "Error: Unable to create file '%s' \n", output_file);
-        return 1;
+        exit(1);
     }
     //Write appropriate magic number to file based on output_type
     fwrite(magic_number, sizeof(magic_number), sizeof(magic_number)-1, fp);
@@ -186,10 +197,9 @@ int ppm_write(int output_type, char *output_file){
     }
 
     //Converting a P6 to P3
-    //Working but bunch of extra zeros added to end
     if(magic_number[1] == '3' && image->input_filetype == '6'){
             fprintf(fp,"\n");
-                for (j=0; j< sizeof(PPMpixel)*width*height; j++){
+                for (j=0; j<width*height; j++){
                         fprintf(fp, "%d", image->buffer[j].r);
                         fprintf(fp, "\n");
                         fprintf(fp, "%d", image->buffer[j].g);
@@ -219,10 +229,10 @@ int ppm_write(int output_type, char *output_file){
                     }
                 }
     }
-    //Working P6 to P6, but extra 0's
+    //Working P6 to P6
     if(magic_number[1] == '6' && image->input_filetype == '6'){
             fprintf(fp,"\n");
-            for (j=0; j< sizeof(PPMpixel)*width*height; j++){
+            for (j=0; j<width*height; j++){
                     fwrite(&image->buffer[j].r,1,1, fp);
                     fwrite(&image->buffer[j].g,1,1, fp);
                     fwrite(&image->buffer[j].b,1,1, fp);
@@ -244,7 +254,7 @@ int main(int argc, char *argv[]){
     //Put Error checker to make sure output_type is 3 or 6.
     if(type != 6 && type != 3){
         fprintf(stderr, "Image output type given is not valid, must be 3 or 6.\n");
-        return 1;
+        exit(1);
     }
     //Grab input file to convert
     char *input_file = argv[2];
